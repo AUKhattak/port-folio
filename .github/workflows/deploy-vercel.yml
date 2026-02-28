@@ -5,32 +5,48 @@ on:
     branches:
       - main
       - master
+  pull_request:
+    branches:
+      - main
+      - master
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout current repository
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
 
+      # 3. Install dependencies
       - name: Install dependencies
         run: npm ci
 
+      # 4. Build the project
       - name: Build project
         run: npm run build
 
+      # 5. Deploy to Vercel (ONLY THIS - NO NETLIFY)
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod --yes --name=port-folio'  # Added --yes and --name
+          vercel-args: '--prod --yes'
           working-directory: ./
+
+      # 6. Create deployment status (OPTIONAL)
+      - name: Create deployment status
+        if: success()
+        run: echo "✅ Deployment to Vercel successful!"

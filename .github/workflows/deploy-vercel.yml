@@ -30,7 +30,7 @@ jobs:
 
       # 3. Install dependencies
       - name: Install dependencies
-        run: npm install
+        run: npm ci  # Using npm ci for faster, more reliable installs
 
       # 4. Build the project
       - name: Build project
@@ -43,27 +43,26 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          scope: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-args: '--prod'  # Changed from production: true
           working-directory: ./
-          production: true
+          # Remove 'scope' as it's redundant with vercel-org-id
 
-      # 6. (OPTIONAL) Push to different GitHub account
-      - name: Push to different GitHub account
-        if: success() && github.event_name == 'push'
-        run: |
-          git config --global user.email "your-email@example.com"
-          git config --global user.name "Your Name"
-          
-          # Add the different account's repository as a remote
-          git remote add deploy https://${{ secrets.GITHUB_TOKEN_DIFFERENT_ACCOUNT }}@github.com/${{ secrets.DIFFERENT_ACCOUNT_REPO }}.git
-          
-          # Push to the different account
-          git push deploy main -f
-        env:
-          GITHUB_TOKEN_DIFFERENT_ACCOUNT: ${{ secrets.GITHUB_TOKEN_DIFFERENT_ACCOUNT }}
-          DIFFERENT_ACCOUNT_REPO: username/repo-name
-
-      # 7. Create deployment status
-      - name: Create deployment
+      # 6. Create deployment status
+      - name: Create deployment status
         if: success()
-        run: echo "✅ Deployment to Vercel successful!"
+        run: |
+          echo "✅ Deployment to Vercel successful!"
+          echo "🌐 Your app is live at: https://${{ secrets.VERCEL_PROJECT_ID }}.vercel.app"
+
+      # 7. (OPTIONAL) Comment PR with deployment URL
+      - name: Comment PR
+        if: github.event_name == 'pull_request' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 Your preview deployment is ready!\n\nVisit: https://${{ secrets.VERCEL_PROJECT_ID }}.vercel.app'
+            })

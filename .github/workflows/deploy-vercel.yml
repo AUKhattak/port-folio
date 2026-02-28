@@ -1,0 +1,69 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout current repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # 4. Build the project
+      - name: Build project
+        run: npm run build
+
+      # 5. Deploy to Vercel
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          scope: ${{ secrets.VERCEL_ORG_ID }}
+          working-directory: ./
+          production: true
+
+      # 6. (OPTIONAL) Push to different GitHub account
+      - name: Push to different GitHub account
+        if: success() && github.event_name == 'push'
+        run: |
+          git config --global user.email "your-email@example.com"
+          git config --global user.name "Your Name"
+          
+          # Add the different account's repository as a remote
+          git remote add deploy https://${{ secrets.GITHUB_TOKEN_DIFFERENT_ACCOUNT }}@github.com/${{ secrets.DIFFERENT_ACCOUNT_REPO }}.git
+          
+          # Push to the different account
+          git push deploy main -f
+        env:
+          GITHUB_TOKEN_DIFFERENT_ACCOUNT: ${{ secrets.GITHUB_TOKEN_DIFFERENT_ACCOUNT }}
+          DIFFERENT_ACCOUNT_REPO: username/repo-name
+
+      # 7. Create deployment status
+      - name: Create deployment
+        if: success()
+        run: echo "✅ Deployment to Vercel successful!"
